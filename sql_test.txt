@@ -1,0 +1,93 @@
+	- создание таблицы со списком сотрудников
+	
+	CREATE TABLE persons (
+		id int(11) not null AUTO_INCREMENT PRIMARY KEY,
+		name varchar(255),
+		sername varchar(255),
+		patronymic varchar(255),
+		boss_id int(11),
+		birthday date,
+		position int(11),
+		start_date datetime,
+		end_date datetime
+	)
+	
+	- создание таблицы со списком должностей
+	
+	CREATE TABLE position (
+		id int(11) not null AUTO_INCREMENT PRIMARY KEY,
+		name varchar(255)
+	)
+	
+	
+	- добавляем данные в таблицу
+	
+	INSERT persons (name, sername, patronymic, boss_id, birthday, position, start_date) VALUES ('Сергей', 'Орешков', 'Николаевич', 3, '1990-02-16', 3, '2015-01-08 00:00:00'),
+						('Валерий', 'Караулов', 'Петрович', 5, '1991-10-01', 1, '2016-07-01 00:00:00'),
+						('Сергей', 'Чураев', 'Федорович', 5, '1997-10-02', 1, '2017-02-09 00:00:00'),
+						('Андрей', 'Хротов', 'Максмович', NULL, '1988-01-10', 3, '2016-08-01 00:00:00'),
+						('Сергей', 'Петров', 'Николаевич', NULL, '1995-01-20', 2, '2016-09-29 00:00:00'),
+						('ывавыа', 'ываываы', 'ываыа', 3, '2000-03-10', 1, '2017-02-11 00:00:00'),
+						('Сергей', 'Данилов', 'Петрович', NULL, '1996-10-10', 3, '2016-05-17 00:00:00');
+						
+	INSERT position (name) VALUES ('Менеджер'),
+						('Директор'),
+						('Оператор');					
+
+	- Можно выполнить первые два запроса 
+		1) Получить всех сотрудников старше 25 лет
+	
+			SELECT * FROM persons WHERE ((year(now()) - year(birthday) - (if ( DATE_FORMAT(now(),'%m%d') >= DATE_FORMAT(birthday,'%m%d') ,0,1)))) > 25	
+			
+		2) работают уже больше 4х месяцев
+	
+			SELECT * FROM persons WHERE PERIOD_DIFF(DATE_FORMAT(NOW(), "%Y%m"),DATE_FORMAT(start_date,"%Y%m"))	
+			
+			
+	- создание таблицы со списком хобби сотрудников
+	
+	CREATE TABLE hobbys (
+		id int(11) not null AUTO_INCREMENT PRIMARY KEY,
+		name varchar(255)
+	)
+	
+	- добавляем в таблицу список хобби
+	
+	INSERT hobbys (name) VALUES ('Теннис'),
+						('Велосипед'),
+						('Рисование'),
+						('Футбол');
+	
+	- создание таблицы связей для хобби сотрудников
+	
+	CREATE TABLE hobby_list (
+		id int(11) not null AUTO_INCREMENT PRIMARY KEY, 
+		person_id int(11) not null,
+		hobby_id int(11) not null
+	)
+	
+	- заполняем тестовыми данными таблицу со связями
+	
+	INSERT hobby_list (person_id, hobby_id) VALUES (2,4),
+						(1,1),
+						(2,2),
+						(2,4),
+						(3,1),
+						(3,3),
+						(4,4),
+						(4,1),
+						(5,1),
+						(5,2),
+						(6,1),
+						(7,4);
+						
+	- Можно выполнить последние два запроса
+		3) имеют хобби: теннис, велосипед, рисование (это все разные люди, но как минимум 2 из них имеют 2 или 3 из этих хобби)
+		
+			SELECT * FROM `persons` WHERE (persons.id IN (SELECT person_id FROM hobby_list WHERE hobby_id IN (1,2,3) GROUP BY person_id HAVING count(*)>1)) OR (persons.id IN (SELECT person_id FROM hobby_list WHERE hobby_id IN (1,2,3) GROUP BY person_id HAVING count(*)=1))
+			данный запрос выведет все сотрудников у которых есть в хобби один только 1 из трех (теннис, велосипед, рисование) и еще тех у кого есть 2 и более хобби среди этого набора
+			
+		4) менеджеры от 23 до 27 лет, работают в компании больше 5 месяцев и любят играть в футбол + вывести ФИО начальника и его возраст
+
+			SELECT p_new.*, CONCAT_WS(' ',per_new.name, per_new.patronymic, per_new.sername) as boss_name, (year(now()) - year(per_new.birthday) - (if ( DATE_FORMAT(now(),'%m%d') >= DATE_FORMAT(per_new.birthday,'%m%d') ,0,1))) as boss_age FROM persons as p_new LEFT JOIN persons as per_new ON (p_new.boss_id = per_new.id) WHERE p_new.id IN ( SELECT persons.id FROM persons LEFT JOIN hobby_list as h_l ON (h_l.person_id = persons.id) WHERE (h_l.hobby_id = 4)) AND (p_new.position = 1) AND ((YEAR(NOW()) - YEAR(p_new.birthday)) < 27) AND ((YEAR(NOW()) - YEAR(p_new.birthday)) > 23) AND (PERIOD_DIFF(DATE_FORMAT(NOW(), "%Y%m"),DATE_FORMAT(p_new.start_date,"%Y%m")) >5)
+	
